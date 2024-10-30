@@ -1,5 +1,6 @@
 import sys
 import re
+import cProfile
 
 def main():
 
@@ -119,4 +120,4 @@ def print_clause(clause, counter, parent_i=None, parent_j=None):
         print(f"{counter}. {clause_str} {{}}")
 
 if __name__ == '__main__':
-    main()
+    cProfile.run('main()')

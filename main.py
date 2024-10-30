@@ -1,33 +1,40 @@
 import sys
 import cProfile
 
-def negate(l1, l2):
+# negate a clause
+def negate(clause):
+    negated_clause = clause.copy()
+    for lit in range(len(negated_clause)):
+        if '~' in negated_clause[lit]:
+            negated_clause[lit] = negated_clause[lit].replace('~', '')
+        else:
+            negated_clause[lit] = '~' + negated_clause[lit]
+    return negated_clause
+
+def isNegation(l1, l2):
     if l1 == ('~' + l2) or l2 == ('~' + l1):
         return True
-    else:
-        return False
+    return False
     
+# check if the clause is trivially true
 def tautology_check(resolved):
-    for r1 in resolved:
-        for r2 in resolved:
-            if negate(r1, r2):
+    for l1 in resolved:
+        for l2 in resolved:
+            if isNegation(l1, l2):
                 return True
     return False
 
-def redundant_check(li1, li2):
-    li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2]
-    return li_dif
-
-def resolve(clauses, c1, c2):
-    # Combine c1 and c2 and use list comprehension to remove duplicates
-    resolved = list(set(c1 + c2))  # Using `set` to remove duplicates right away
-    ors = resolved.copy()  # Copy for comparison later
+# resolve clauses using resolution principle
+def resolve(c1, c2):
+    resolved_clause = c1 + c2
+    resolved_clause = list(dict.fromkeys(resolved_clause))  # Using `set` to remove duplicates right away
+    ors = resolved_clause.copy()  # Copy for comparison later
 
     # Identify and remove negated pairs
     for l1 in c1:
         for l2 in c2:
-            if negate(l1, l2):
-                resolved = [literal for literal in resolved if literal != l1 and literal != l2]
+            if isNegation(l1, l2):
+                resolved = [literal for literal in resolved_clause if literal != l1 and literal != l2]
                 
                 # Check for contradiction
                 if len(resolved) == 0:
@@ -37,15 +44,27 @@ def resolve(clauses, c1, c2):
                     return True
                 # Check for redundancy
                 else:
-                    for cl in clauses:
-                        if redundant_check(resolved, cl) == []:
-                            return True
                     return resolved  # Return new clause if it's informative
 
     # Final check to return True if no changes were made to `resolved`
-    if resolved == ors:
+    if resolved_clause == ors:
         return True
 
+def print_initial_clauses(clauses):
+    start = 1
+    for num, clause in enumerate(clauses):
+        print_clause(num + start, clause)
+
+def print_clause(clause_number, clause, result=None, parent_1=None, parent_2=None):
+    if parent_1 and parent_2:
+        if result:
+            print(f"{clause_number}. {result} {{{parent_1}, {parent_2}}}")
+        else:
+            print(f"{clause_number}. {' '.join(clause)} {{{parent_1}, {parent_2}}}")
+    else:
+        print(f"{clause_number}. {' '.join(clause)} {{}}")
+
+# main function
 def main():
     if len(sys.argv) != 2:
         print("Usage: python main.py <file>")
@@ -62,42 +81,53 @@ def main():
     validation_clause = clauses[-1]
     del clauses[-1]
 
-    for clause in clauses:
-        print(clause_number, ". ", ' '.join(clause), " {}", sep='')
-        clause_number += 1
+    validation_clause = negate(validation_clause)
+    clauses += [[lit] for lit in validation_clause]
 
-    for clause in range(len(validation_clause)):
-        if '~' in validation_clause[clause]:
-            validation_clause[clause] = validation_clause[clause].replace('~', '')
-        else:
-            validation_clause[clause] = '~' + validation_clause[clause]
-
-    for clause in validation_clause:
-        clauses.append([clause])
-        print(clause_number, ". ", ' '.join([clause]), " {}", sep='')
-        clause_number += 1
-
+    clause_number = len(clauses)
+    print_initial_clauses(clauses)
+    clause_number += 1
+    
     cli = 1
     while cli < clause_number - 1:
         clj = 0
         while clj < cli:
-            #print("testing",cli, clj)
-            result = resolve(clauses, clauses[cli], clauses[clj])
-            if result is False:
-                print(clause_number, ". ","Contradiction", ' {', cli + 1, ", ", clj + 1, '}', sep='')
-                clause_number += 1
+            resolved_clause = resolve(clauses[cli], clauses[clj])
+            if resolved_clause is False:
+                print_clause(clause_number, resolved_clause, "Contradiction", cli + 1, clj + 1)
                 print("Valid")
-                sys.exit(0)
-            elif result is True:
+                return
+            elif resolved_clause is True:
                 clj += 1
                 continue
             else:
-                print(clause_number, ". ",' '.join(result), ' {', cli + 1, ", ", clj + 1, '}', sep='')
+                print_clause(clause_number, resolved_clause, cli + 1, clj + 1)
+                clauses.append(list(resolved_clause))
                 clause_number += 1
-                clauses.append(result)
             clj += 1
         cli += 1
-    print('Fail')
+    print("Fail")
+    # cli = 1
+    # while cli < clause_number - 1:
+    #     clj = 0
+    #     while clj < cli:
+    #         #print("testing",cli, clj)
+    #         result = resolve(clauses, clauses[cli], clauses[clj])
+    #         if result is False:
+    #             print(clause_number, ". ","Contradiction", ' {', cli + 1, ", ", clj + 1, '}', sep='')
+    #             clause_number += 1
+    #             print("Valid")
+    #             sys.exit(0)
+    #         elif result is True:
+    #             clj += 1
+    #             continue
+    #         else:
+    #             print(clause_number, ". ",' '.join(result), ' {', cli + 1, ", ", clj + 1, '}', sep='')
+    #             clauses.append(result)
+    #             clause_number += 1
+    #         clj += 1
+    #     cli += 1
+    # print('Fail')
 
 if __name__ == '__main__':
     # main()
