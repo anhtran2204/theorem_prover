@@ -1,6 +1,6 @@
 import re
 import sys
-
+import cProfile
 
 def main():
     clauseNumber = 1
@@ -111,4 +111,4 @@ def printFunc(cl, i1, i2):
 
 
 if __name__ == "__main__":
-    main()
+    cProfile.run('main()')
