@@ -26,36 +26,33 @@ def tautology_check(resolved):
 
 # resolve clauses using resolution principle
 def resolve(c1, c2):
-    resolved_clause = c1 + c2
-    resolved_clause = list(dict.fromkeys(resolved_clause))  # Using `set` to remove duplicates right away
-    ors = resolved_clause.copy()  # Copy for comparison later
-
-    # Identify and remove negated pairs
+    resolved_clause = list(dict.fromkeys(c1 + c2))  # Using `set` to remove duplicates right away
+    
+     # Find pairs of literals that are negations of each other between c1 and c2
     for l1 in c1:
         for l2 in c2:
             if isNegation(l1, l2):
-                resolved = [literal for literal in resolved_clause if literal != l1 and literal != l2]
-                
-                # Check for contradiction
-                if len(resolved) == 0:
-                    return False
-                # Check if the clause is trivially true
-                elif tautology_check(resolved):
-                    return True
-                # Check for redundancy
-                else:
-                    return resolved  # Return new clause if it's informative
+                # Remove the negated pair from the resolved clause
+                temp_resolved = [lit for lit in resolved_clause if lit != l1 and lit != l2]
 
-    # Final check to return True if no changes were made to `resolved`
-    if resolved_clause == ors:
-        return True
+                # Check for tautology
+                if tautology_check(temp_resolved):
+                    return True  # Represents a tautology, so we skip adding it
 
-def print_initial_clauses(clauses):
-    start = 1
+                # If the resolved clause is empty, it indicates a contradiction
+                if not temp_resolved:
+                    return False  # Represents a contradiction
+
+                # Check if the resolved clause is already known
+                return temp_resolved  # Return the resolved clause without tautologies or contradictions
+
+    return True  # Return True if no resolution was possible
+
+def print_initial_clauses(clauses, clause_number):
     for num, clause in enumerate(clauses):
-        print_clause(num + start, clause)
+        print_clause(num + clause_number, clause)
 
-def print_clause(clause_number, clause, result=None, parent_1=None, parent_2=None):
+def print_clause(clause_number, clause, parent_1=None, parent_2=None, result=None):
     if parent_1 and parent_2:
         if result:
             print(f"{clause_number}. {result} {{{parent_1}, {parent_2}}}")
@@ -71,63 +68,44 @@ def main():
         sys.exit(1)
 
     clause_number = 1
-    clauses = []
+    knowledge_base = []
     with open(sys.argv[1], errors='ignore') as input_file:
         for line in input_file:
             line = line.strip()
             line = line.split(" ")
-            clauses.append(line) 
+            knowledge_base.append(line) 
         
-    validation_clause = clauses[-1]
-    del clauses[-1]
+    validation_clause = knowledge_base[-1]
+    del knowledge_base[-1]
 
     validation_clause = negate(validation_clause)
-    clauses += [[lit] for lit in validation_clause]
+    knowledge_base += [[lit] for lit in validation_clause]
 
-    clause_number = len(clauses)
-    print_initial_clauses(clauses)
+    resolved_clauses = {frozenset(clause) for clause in knowledge_base}
+    print_initial_clauses(knowledge_base, clause_number)
+    clause_number = len(knowledge_base)
     clause_number += 1
     
     cli = 1
     while cli < clause_number - 1:
         clj = 0
         while clj < cli:
-            resolved_clause = resolve(clauses[cli], clauses[clj])
+            resolved_clause = resolve(knowledge_base[cli], knowledge_base[clj])
             if resolved_clause is False:
-                print_clause(clause_number, resolved_clause, "Contradiction", cli + 1, clj + 1)
+                print_clause(clause_number, resolved_clause, cli + 1, clj + 1, "Contradiction")
                 print("Valid")
                 return
             elif resolved_clause is True:
                 clj += 1
                 continue
-            else:
+            elif set(resolved_clause) not in resolved_clauses:
                 print_clause(clause_number, resolved_clause, cli + 1, clj + 1)
-                clauses.append(list(resolved_clause))
+                resolved_clauses.add(frozenset(resolved_clause))
+                knowledge_base.append(list(resolved_clause))
                 clause_number += 1
             clj += 1
         cli += 1
     print("Fail")
-    # cli = 1
-    # while cli < clause_number - 1:
-    #     clj = 0
-    #     while clj < cli:
-    #         #print("testing",cli, clj)
-    #         result = resolve(clauses, clauses[cli], clauses[clj])
-    #         if result is False:
-    #             print(clause_number, ". ","Contradiction", ' {', cli + 1, ", ", clj + 1, '}', sep='')
-    #             clause_number += 1
-    #             print("Valid")
-    #             sys.exit(0)
-    #         elif result is True:
-    #             clj += 1
-    #             continue
-    #         else:
-    #             print(clause_number, ". ",' '.join(result), ' {', cli + 1, ", ", clj + 1, '}', sep='')
-    #             clauses.append(result)
-    #             clause_number += 1
-    #         clj += 1
-    #     cli += 1
-    # print('Fail')
 
 if __name__ == '__main__':
     # main()
